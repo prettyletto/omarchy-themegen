@@ -9,54 +9,54 @@ import (
 var hexColorRE = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 type Colors struct {
-	Accent             string `toml:"accent"`
-	Cursor             string `toml:"cursor"`
-	Foreground         string `toml:"foreground"`
-	Background         string `toml:"background"`
+	Accent              string `toml:"accent"`
+	Cursor              string `toml:"cursor"`
+	Foreground          string `toml:"foreground"`
+	Background          string `toml:"background"`
 	SelectionForeground string `toml:"selection_foreground"`
 	SelectionBackground string `toml:"selection_background"`
-	Color0  string `toml:"color0"`
-	Color1  string `toml:"color1"`
-	Color2  string `toml:"color2"`
-	Color3  string `toml:"color3"`
-	Color4  string `toml:"color4"`
-	Color5  string `toml:"color5"`
-	Color6  string `toml:"color6"`
-	Color7  string `toml:"color7"`
-	Color8  string `toml:"color8"`
-	Color9  string `toml:"color9"`
-	Color10 string `toml:"color10"`
-	Color11 string `toml:"color11"`
-	Color12 string `toml:"color12"`
-	Color13 string `toml:"color13"`
-	Color14 string `toml:"color14"`
-	Color15 string `toml:"color15"`
+	Color0              string `toml:"color0"`
+	Color1              string `toml:"color1"`
+	Color2              string `toml:"color2"`
+	Color3              string `toml:"color3"`
+	Color4              string `toml:"color4"`
+	Color5              string `toml:"color5"`
+	Color6              string `toml:"color6"`
+	Color7              string `toml:"color7"`
+	Color8              string `toml:"color8"`
+	Color9              string `toml:"color9"`
+	Color10             string `toml:"color10"`
+	Color11             string `toml:"color11"`
+	Color12             string `toml:"color12"`
+	Color13             string `toml:"color13"`
+	Color14             string `toml:"color14"`
+	Color15             string `toml:"color15"`
 }
 
 func StaticColors() *Colors {
 	return &Colors{
-		Accent:             "#82aaff",
-		Cursor:             "#c792ea",
-		Foreground:         "#bbc2cf",
-		Background:         "#1a1b26",
+		Accent:              "#82aaff",
+		Cursor:              "#c792ea",
+		Foreground:          "#bbc2cf",
+		Background:          "#1a1b26",
 		SelectionForeground: "#1a1b26",
 		SelectionBackground: "#82aaff",
-		Color0:  "#1a1b26",
-		Color1:  "#db4b4b",
-		Color2:  "#9ece6a",
-		Color3:  "#e0af68",
-		Color4:  "#7aa2f7",
-		Color5:  "#bb9af7",
-		Color6:  "#7dcfff",
-		Color7:  "#a9b1d6",
-		Color8:  "#3b4261",
-		Color9:  "#db4b4b",
-		Color10: "#9ece6a",
-		Color11: "#e0af68",
-		Color12: "#7aa2f7",
-		Color13: "#bb9af7",
-		Color14: "#7dcfff",
-		Color15: "#c0caf5",
+		Color0:              "#1a1b26",
+		Color1:              "#db4b4b",
+		Color2:              "#9ece6a",
+		Color3:              "#e0af68",
+		Color4:              "#7aa2f7",
+		Color5:              "#bb9af7",
+		Color6:              "#7dcfff",
+		Color7:              "#a9b1d6",
+		Color8:              "#3b4261",
+		Color9:              "#db4b4b",
+		Color10:             "#9ece6a",
+		Color11:             "#e0af68",
+		Color12:             "#7aa2f7",
+		Color13:             "#bb9af7",
+		Color14:             "#7dcfff",
+		Color15:             "#c0caf5",
 	}
 }
 

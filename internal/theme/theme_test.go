@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/anomalyco/omarchy-themegen/internal/image"
+	"github.com/prettyletto/omarchy-themegen/internal/image"
 )
 
 func createTestImage(t *testing.T, dir, name string) string {

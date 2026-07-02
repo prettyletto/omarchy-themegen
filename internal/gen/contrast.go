@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/anomalyco/omarchy-themegen/internal/theme"
+	"github.com/prettyletto/omarchy-themegen/internal/theme"
 )
 
 const (
@@ -91,4 +91,25 @@ func colorDistance(a, b RGB) float64 {
 
 func ValidateThemeContrast(c *theme.Colors) []string {
 	return validatePaletteContrast(c)
+}
+
+func HasCriticalContrastFailures(c *theme.Colors) bool {
+	bg, errBg := ParseHex(c.Background)
+	fg, errFg := ParseHex(c.Foreground)
+	if errBg != nil || errFg != nil {
+		return true
+	}
+	// Critical: foreground must be at least marginally readable (2.0 absolute minimum)
+	if ContrastRatio(fg, bg) < 2.0 {
+		return true
+	}
+
+	selBg, errSelBg := ParseHex(c.SelectionBackground)
+	selFg, errSelFg := ParseHex(c.SelectionForeground)
+	if errSelBg == nil && errSelFg == nil {
+		if ContrastRatio(selFg, selBg) < 2.0 {
+			return true
+		}
+	}
+	return false
 }

@@ -1,24 +1,19 @@
 package gen
 
 import (
+	"fmt"
 	"math"
 	"sort"
 
-	"github.com/anomalyco/omarchy-themegen/internal/theme"
+	"github.com/prettyletto/omarchy-themegen/internal/theme"
 )
 
 type PaletteCandidate struct {
-	ID          int
-	Label       string
-	Colors      *theme.Colors
-	Warnings    []string
+	ID       int
+	Label    string
+	Colors   *theme.Colors
+	Warnings []string
 }
-
-const (
-	minContrastForeground = 4.5
-	minContrastAccent     = 3.0
-	minContrastSelection  = 3.0
-)
 
 func GeneratePalettes(dominantColors []DominantColor, opts *GenerationOptions) ([]PaletteCandidate, error) {
 	colors := make([]DominantColor, len(dominantColors))
@@ -43,9 +38,10 @@ func GeneratePalettes(dominantColors []DominantColor, opts *GenerationOptions) (
 	if seedAbs < 0 {
 		seedAbs = -seedAbs
 	}
-	offset1 := seedAbs % max(1, len(bySaturation))
-	offset2 := (seedAbs * 2) % max(1, len(bySaturation))
-	offset3 := (seedAbs * 3) % max(1, len(bySaturation))
+	colorCount := max(1, len(bySaturation))
+	offset1 := seedAbs % colorCount
+	offset2 := (seedAbs + max(1, colorCount/3)) % colorCount
+	offset3 := (seedAbs + max(2, (colorCount*2)/3)) % colorCount
 
 	mute1 := 0.0
 	mute2 := 0.12 + float64(seedAbs%5)*0.02
@@ -53,36 +49,74 @@ func GeneratePalettes(dominantColors []DominantColor, opts *GenerationOptions) (
 
 	candidates := make([]PaletteCandidate, 3)
 
-	candidates[0] = buildDirection(1, "Vibrant", byLightness, bySaturation, offset1, mute1)
+	candidates[0] = buildDirection(1, "Vibrant", byLightness, bySaturation, offset1, mute1, directionProfile{
+		bgLightness:     0.09,
+		fgLightness:     0.88,
+		accentLightness: 0.62,
+		accentSatFloor:  0.72,
+	})
 
-	candidates[1] = buildDirection(2, "Balanced", byLightness, bySaturation, offset2, mute2)
+	candidates[1] = buildDirection(2, "Balanced", byLightness, bySaturation, offset2, mute2, directionProfile{
+		bgLightness:     0.14,
+		fgLightness:     0.80,
+		accentLightness: 0.54,
+		accentSatFloor:  0.52,
+	})
 
-	candidates[2] = buildDirection(3, "Muted", byLightness, bySaturation, offset3, mute3)
+	candidates[2] = buildDirection(3, "Muted", byLightness, bySaturation, offset3, mute3, directionProfile{
+		bgLightness:     0.20,
+		fgLightness:     0.72,
+		accentLightness: 0.46,
+		accentSatFloor:  0.28,
+		accentSatCeil:   0.45,
+	})
 
 	if opts.LightMode {
 		candidates = invertToLight(candidates)
 	}
 
-	return candidates, nil
+	// Filter candidates with critical contrast failures
+	var valid []PaletteCandidate
+	for _, c := range candidates {
+		if HasCriticalContrastFailures(c.Colors) {
+			c.Warnings = append(c.Warnings, "critical contrast failure — direction blocked")
+			continue
+		}
+		valid = append(valid, c)
+	}
+	if len(valid) == 0 {
+		return nil, fmt.Errorf("all palette candidates have critical contrast failures; cannot generate usable directions from this image")
+	}
+
+	return valid, nil
 }
 
-func buildDirection(id int, label string, byLightness, bySaturation []DominantColor, accentIdx int, muteAmount float64) PaletteCandidate {
+type directionProfile struct {
+	bgLightness     float64
+	fgLightness     float64
+	accentLightness float64
+	accentSatFloor  float64
+	accentSatCeil   float64
+}
+
+func buildDirection(id int, label string, byLightness, bySaturation []DominantColor, accentIdx int, muteAmount float64, profile directionProfile) PaletteCandidate {
 	c := PaletteCandidate{
 		ID:    id,
 		Label: label,
 	}
 
 	// Pick background: darkest color, but ensure it's dark enough (< 0.25 lightness)
-	bg := pickBackground(byLightness)
+	bg := pickBackground(byLightness, profile.bgLightness)
 
 	// Pick accent: from saturation-sorted list
-	accent := pickAccent(bySaturation, accentIdx, bg)
+	accent := pickAccent(bySaturation, accentIdx, bg, profile)
 
 	// Pick foreground: lightest color with enough contrast against background
-	fg := pickForeground(byLightness, bg, muteAmount)
+	fg := pickForeground(byLightness, bg, muteAmount, profile.fgLightness)
 
 	// Generate full palette
 	c.Colors = buildTerminalPalette(bg, fg, accent, bySaturation, muteAmount)
+	ensureReadableTextColors(c.Colors)
 
 	// Validate
 	c.Warnings = validatePaletteContrast(c.Colors)
@@ -90,35 +124,32 @@ func buildDirection(id int, label string, byLightness, bySaturation []DominantCo
 	return c
 }
 
-func pickBackground(byLightness []DominantColor) RGB {
+func pickBackground(byLightness []DominantColor, targetLightness float64) RGB {
 	// Find darkest colors, ensure dark enough
 	for _, c := range byLightness {
 		if c.Lightness < 0.35 {
 			rgb := c.Color
-			// Darken slightly if needed
-			if c.Lightness > 0.25 {
-				rgb = rgb.WithLightness(0.18)
-			}
-			return rgb
+			return rgb.WithLightness(targetLightness)
 		}
 	}
 	// Fallback: use a dark neutral
-	return RGB{0.08, 0.10, 0.14}
+	return RGB{0.08, 0.10, 0.14}.WithLightness(targetLightness)
 }
 
-func pickAccent(bySaturation []DominantColor, idx int, bg RGB) RGB {
+func pickAccent(bySaturation []DominantColor, idx int, bg RGB, profile directionProfile) RGB {
 	if idx < len(bySaturation) {
 		accent := bySaturation[idx].Color
-		// Boost saturation if needed
 		hsl := accent.ToHSL()
-		if hsl.S < 0.4 {
-			hsl.S = 0.55
-			accent = hsl.ToRGB()
+		hsl.S = math.Max(hsl.S, profile.accentSatFloor)
+		if profile.accentSatCeil > 0 {
+			hsl.S = math.Min(hsl.S, profile.accentSatCeil)
 		}
+		hsl.L = profile.accentLightness
+		accent = hsl.ToRGB()
 		// Ensure enough contrast with background
 		if ContrastRatio(accent, bg) < 3.0 {
 			hsl = accent.ToHSL()
-			hsl.L = math.Max(hsl.L, 0.45)
+			hsl.L = math.Max(hsl.L, 0.58)
 			accent = hsl.ToRGB()
 		}
 		return accent
@@ -126,17 +157,19 @@ func pickAccent(bySaturation []DominantColor, idx int, bg RGB) RGB {
 	return RGB{0.51, 0.67, 1.0}
 }
 
-func pickForeground(byLightness []DominantColor, bg RGB, muteAmount float64) RGB {
+func pickForeground(byLightness []DominantColor, bg RGB, muteAmount float64, targetLightness float64) RGB {
 	// Find lightest colors with contrast
 	for i := len(byLightness) - 1; i >= 0; i-- {
 		c := byLightness[i].Color
-		if ContrastRatio(c, bg) >= minContrastForeground {
+		if ContrastRatio(c, bg) >= MinForegroundContrast {
 			rgb := c
 			if muteAmount > 0 {
 				hsl := rgb.ToHSL()
 				hsl.S = clamp(hsl.S-muteAmount*0.3, 0, 1)
-				hsl.L = clamp(hsl.L+muteAmount*0.1, 0, 1)
+				hsl.L = targetLightness
 				rgb = hsl.ToRGB()
+			} else {
+				rgb = rgb.WithLightness(targetLightness)
 			}
 			return rgb
 		}
@@ -189,9 +222,9 @@ func generateTerminalColors(bg, fg, accent RGB, srcColors []DominantColor, muteA
 	// Use source colors for red/green/yellow/blue/magenta/cyan
 	// Strategy: find colors in source that are close to these hues
 	hueTargets := []struct {
-		slot    int
-		hue     float64
-		label   string
+		slot  int
+		hue   float64
+		label string
 	}{
 		{1, 0.0, "red"},
 		{2, 0.33, "green"},
@@ -203,15 +236,14 @@ func generateTerminalColors(bg, fg, accent RGB, srcColors []DominantColor, muteA
 
 	used := map[int]bool{}
 	for _, t := range hueTargets {
-		best := findBestHueColor(srcColors, t.hue, used)
+		idx, best := findBestHueColor(srcColors, t.hue, used)
 		if best != nil {
 			rgb := best.Color
-			// Adjust to ensure visibility on dark bg
 			hsl := rgb.ToHSL()
 			hsl.L = clamp(hsl.L+0.05, 0.25, 0.55)
 			hsl.S = clamp(hsl.S-muteAmount, 0.3, 1.0)
 			colors[t.slot] = hsl.ToRGB().Hex()
-			used[bestIdx(srcColors, best)] = true
+			used[idx] = true
 		} else {
 			colors[t.slot] = defaultTermColor(t.slot).Hex()
 		}
@@ -236,7 +268,57 @@ func generateTerminalColors(bg, fg, accent RGB, srcColors []DominantColor, muteA
 	return colors
 }
 
-func findBestHueColor(src []DominantColor, targetHue float64, used map[int]bool) *DominantColor {
+func ensureReadableTextColors(c *theme.Colors) {
+	bg, err := ParseHex(c.Background)
+	if err != nil {
+		return
+	}
+	if fg, err := ParseHex(c.Foreground); err == nil {
+		c.Foreground = ensureReadableAgainst(bg, fg, MinForegroundContrast).Hex()
+	}
+	if color7, err := ParseHex(c.Color7); err == nil {
+		c.Color7 = ensureReadableAgainst(bg, color7, MinForegroundContrast).Hex()
+	}
+	if color15, err := ParseHex(c.Color15); err == nil {
+		c.Color15 = ensureReadableAgainst(bg, color15, MinForegroundContrast).Hex()
+	}
+	if selBg, err := ParseHex(c.SelectionBackground); err == nil {
+		if selFg, err := ParseHex(c.SelectionForeground); err == nil {
+			c.SelectionForeground = ensureReadableAgainst(selBg, selFg, MinSelectionContrast).Hex()
+		}
+	}
+}
+
+func ensureReadableAgainst(bg, fg RGB, minContrast float64) RGB {
+	if ContrastRatio(fg, bg) >= minContrast {
+		return fg
+	}
+
+	hsl := fg.ToHSL()
+	for _, l := range textLightnessLadder(bg, hsl.L) {
+		candidate := HSL{H: hsl.H, S: hsl.S, L: l}.ToRGB()
+		if ContrastRatio(candidate, bg) >= minContrast {
+			return candidate
+		}
+	}
+
+	black := RGB{0, 0, 0}
+	white := RGB{1, 1, 1}
+	if ContrastRatio(black, bg) > ContrastRatio(white, bg) {
+		return black
+	}
+	return white
+}
+
+func textLightnessLadder(bg RGB, current float64) []float64 {
+	if bg.Luminance() < 0.5 {
+		return []float64{math.Max(current, 0.78), 0.84, 0.90, 0.96, 1.0}
+	}
+	return []float64{math.Min(current, 0.24), 0.18, 0.12, 0.06, 0.0}
+}
+
+func findBestHueColor(src []DominantColor, targetHue float64, used map[int]bool) (int, *DominantColor) {
+	bestIdx := -1
 	var best *DominantColor
 	bestDist := math.MaxFloat64
 
@@ -255,18 +337,10 @@ func findBestHueColor(src []DominantColor, targetHue float64, used map[int]bool)
 		if dist < bestDist {
 			bestDist = dist
 			best = &src[i]
+			bestIdx = i
 		}
 	}
-	return best
-}
-
-func bestIdx(src []DominantColor, target *DominantColor) int {
-	for i := range src {
-		if &src[i] == target {
-			return i
-		}
-	}
-	return -1
+	return bestIdx, best
 }
 
 func defaultTermColor(slot int) RGB {
@@ -284,9 +358,14 @@ func defaultTermColor(slot int) RGB {
 func invertToLight(candidates []PaletteCandidate) []PaletteCandidate {
 	for i := range candidates {
 		c := candidates[i].Colors
-		// Swap foreground/background with adjustments
-		bg, _ := ParseHex(c.Background)
-		fg, _ := ParseHex(c.Foreground)
+		bg, errBg := ParseHex(c.Background)
+		fg, errFg := ParseHex(c.Foreground)
+
+		if errBg != nil || errFg != nil {
+			candidates[i].Warnings = append(candidates[i].Warnings,
+				"light inversion failed: invalid foreground/background colors")
+			continue
+		}
 
 		// Light theme: background is light, foreground is dark
 		newBg := fg.WithLightness(clamp(fg.ToHSL().L+0.08, 0.85, 0.97))
@@ -296,14 +375,18 @@ func invertToLight(candidates []PaletteCandidate) []PaletteCandidate {
 		c.Foreground = newFg.Hex()
 
 		// Adjust accent for light bg
-		accent, _ := ParseHex(c.Accent)
-		accentHsl := accent.ToHSL()
-		accentHsl.L = clamp(accentHsl.L+0.1, 0.25, 0.6)
-		c.Accent = accentHsl.ToRGB().Hex()
+		accent, errAcc := ParseHex(c.Accent)
+		if errAcc == nil {
+			accentHsl := accent.ToHSL()
+			accentHsl.L = clamp(accentHsl.L+0.1, 0.25, 0.6)
+			c.Accent = accentHsl.ToRGB().Hex()
+			// Selection bg must contrast with light background
+			selHsl := accent.ToHSL()
+			selHsl.L = clamp(selHsl.L-0.15, 0.2, 0.4)
+			c.SelectionBackground = selHsl.ToRGB().Hex()
+		}
 
-		// Selection on light bg
 		c.SelectionForeground = newBg.Hex()
-		c.SelectionBackground = accentHsl.ToRGB().Hex()
 
 		// Make terminal colors darker for light bg
 		for _, idx := range []*string{
@@ -311,13 +394,18 @@ func invertToLight(candidates []PaletteCandidate) []PaletteCandidate {
 			&c.Color7, &c.Color8, &c.Color9, &c.Color10, &c.Color11, &c.Color12,
 			&c.Color13, &c.Color14, &c.Color15,
 		} {
-			rgb, _ := ParseHex(*idx)
+			rgb, err := ParseHex(*idx)
+			if err != nil {
+				continue
+			}
 			hsl := rgb.ToHSL()
 			hsl.L = clamp(hsl.L-0.25, 0.15, 0.7)
 			*idx = hsl.ToRGB().Hex()
 		}
 
 		c.Color0 = newBg.Hex()
+		ensureReadableTextColors(c)
+		candidates[i].Warnings = validatePaletteContrast(c)
 
 		candidates[i].Colors = c
 		candidates[i].Label = candidates[i].Label + " Light"

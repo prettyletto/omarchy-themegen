@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anomalyco/omarchy-themegen/internal/image"
+	"github.com/prettyletto/omarchy-themegen/internal/image"
 )
 
 var (
@@ -25,6 +25,10 @@ type ThemeModel struct {
 	DirectionID    int
 	DirectionLabel string
 	LightMode      bool
+
+	GroupSelections     map[string]int
+	Overrides           map[string]int
+	CompositionWarnings []string
 }
 
 func NewStatic(name, sourceImage string, imgResult *image.Result) (*ThemeModel, error) {
@@ -53,6 +57,10 @@ func NewStatic(name, sourceImage string, imgResult *image.Result) (*ThemeModel, 
 		DirectionID:    0,
 		DirectionLabel: "Static",
 	}, nil
+}
+
+func NormalizeForExport(name string) string {
+	return normalizeThemeName(name)
 }
 
 func normalizeThemeName(name string) string {

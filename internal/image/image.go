@@ -37,7 +37,7 @@ func Validate(path string) *Result {
 	// Check magick is available for deeper inspection
 	magickPath, err := exec.LookPath("magick")
 	if err != nil {
-		r.Errors = append(r.Errors, fmt.Sprintf("ImageMagick 'magick' is not installed or not on PATH; required for image validation"))
+		r.Errors = append(r.Errors, "ImageMagick 'magick' is not installed or not on PATH; required for image validation")
 		return r
 	}
 

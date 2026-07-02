@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anomalyco/omarchy-themegen/internal/theme"
+	"github.com/prettyletto/omarchy-themegen/internal/omarchy"
+	"github.com/prettyletto/omarchy-themegen/internal/theme"
 )
 
 type PostExportResult struct {
@@ -64,8 +65,25 @@ func PostExport(exportDir, normalizedName string) *PostExportResult {
 	// Check required files exist
 	requiredFiles := []string{
 		"colors.toml",
+		"alacritty.toml",
+		"btop.theme",
+		"chromium.theme",
+		"foot.ini",
+		"ghostty.conf",
+		"gum.env.conf",
+		"helix.toml",
+		"hyprland-preview-share-picker.css",
+		"hyprland.conf",
+		"hyprlock.conf",
+		"keyboard.rgb",
+		"kitty.conf",
+		"mako.ini",
 		"preview.png",
 		"preview-unlock.png",
+		"obsidian.css",
+		"swayosd.css",
+		"walker.css",
+		"waybar.css",
 		"unlock.png",
 		"neovim.lua",
 		"README.md",
@@ -101,19 +119,32 @@ func PostExport(exportDir, normalizedName string) *PostExportResult {
 	}
 
 	// Check if Omarchy is installed (optional)
-	if omarchyPath, err := exec.LookPath("omarchy"); err == nil {
+	disc := omarchy.Discover()
+	if disc.Installed {
+		result.OmarchyInstalled = true
+		// Run theme list check (non-mutating)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, omarchyPath, "theme", "list")
+		cmd := exec.CommandContext(ctx, disc.BinaryPath, "theme", "list")
 		output, err := cmd.Output()
 		if err != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("omarchy detected but theme list check failed: %v", err))
+			result.OmarchyInstalled = false
 		} else {
 			_ = output
-			result.OmarchyInstalled = true
 		}
 	} else {
-		result.Warnings = append(result.Warnings, "omarchy not installed; reduced validation confidence")
+		result.OmarchyInstalled = false
+		for _, diag := range disc.Diagnostics {
+			result.Warnings = append(result.Warnings, "omarchy: "+diag)
+		}
+		result.Warnings = append(result.Warnings, fmt.Sprintf("omarchy not installed; reduced validation confidence (%s)", disc.Confidence()))
+	}
+
+	// Preview dimension validation
+	if errs := checkPreviewDimensions(exportDir); len(errs) > 0 {
+		result.Errors = append(result.Errors, errs...)
+		result.Passed = false
 	}
 
 	return result
@@ -137,4 +168,39 @@ func validateColorKeys(content string, result *PostExportResult) {
 	}
 }
 
+func checkPreviewDimensions(exportDir string) []string {
+	var errs []string
 
+	magick, err := exec.LookPath("magick")
+	if err != nil {
+		return nil
+	}
+
+	checks := []struct {
+		file     string
+		expected string
+	}{
+		{"preview.png", "1800x1012"},
+		{"preview-unlock.png", "1920x1080"},
+	}
+
+	for _, c := range checks {
+		path := filepath.Join(exportDir, c.file)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		cmd := exec.CommandContext(ctx, magick, "identify", "-format", "%wx%h", path)
+		out, err := cmd.Output()
+		cancel()
+		if err != nil {
+			continue
+		}
+		dim := strings.TrimSpace(string(out))
+		if dim != c.expected {
+			errs = append(errs, fmt.Sprintf("%s dimensions %s, expected %s", c.file, dim, c.expected))
+		}
+	}
+
+	return errs
+}

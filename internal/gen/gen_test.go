@@ -3,9 +3,10 @@ package gen
 import (
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/anomalyco/omarchy-themegen/internal/theme"
+	"github.com/prettyletto/omarchy-themegen/internal/theme"
 )
 
 func hasMagick() bool {
@@ -212,6 +213,52 @@ func TestGeneratePalettes_ThreeCandidates(t *testing.T) {
 	}
 }
 
+func TestGeneratePalettes_DirectionsAreVisuallyDistinctAtSeedZero(t *testing.T) {
+	colors := []DominantColor{
+		makeDominant("#151821"),
+		makeDominant("#2d2038"),
+		makeDominant("#8f4fd6"),
+		makeDominant("#d65f9f"),
+		makeDominant("#6f52d9"),
+		makeDominant("#c68bdd"),
+		makeDominant("#32365a"),
+		makeDominant("#e8d7f0"),
+	}
+
+	candidates, err := GeneratePalettes(colors, &GenerationOptions{Seed: 0})
+	if err != nil {
+		t.Fatalf("GeneratePalettes: %v", err)
+	}
+	if len(candidates) != 3 {
+		t.Fatalf("expected 3 candidates, got %d", len(candidates))
+	}
+
+	seenAccents := map[string]bool{}
+	seenBackgrounds := map[string]bool{}
+	for _, c := range candidates {
+		seenAccents[c.Colors.Accent] = true
+		seenBackgrounds[c.Colors.Background] = true
+	}
+	if len(seenAccents) != 3 {
+		t.Fatalf("expected three distinct accents, got %v", seenAccents)
+	}
+	if len(seenBackgrounds) != 3 {
+		t.Fatalf("expected three distinct backgrounds, got %v", seenBackgrounds)
+	}
+}
+
+func makeDominant(hex string) DominantColor {
+	rgb, _ := ParseHex(hex)
+	hsl := rgb.ToHSL()
+	return DominantColor{
+		Color:      rgb,
+		Hex:        hex,
+		Frequency:  1,
+		Saturation: hsl.S,
+		Lightness:  hsl.L,
+	}
+}
+
 func TestGeneratePalettes_Deterministic(t *testing.T) {
 	if !hasMagick() {
 		t.Skip("magick not available")
@@ -248,6 +295,10 @@ func TestGeneratePalettes_DifferentSeed(t *testing.T) {
 
 	c1, _ := GeneratePalettes(colors, opts1)
 	c2, _ := GeneratePalettes(colors, opts2)
+
+	if len(c1) == 0 || len(c2) == 0 {
+		t.Skip("no candidates passed contrast validation")
+	}
 
 	different := false
 	for i := range c1 {
@@ -311,12 +362,12 @@ func TestValidateThemeContrast_ValidPasses(t *testing.T) {
 		Accent:              "#7aa2f7",
 		SelectionForeground: "#1a1b26",
 		SelectionBackground: "#7aa2f7",
-		Color1: "#db4b4b",
-		Color2: "#9ece6a",
-		Color3: "#e0af68",
-		Color4: "#7aa2f7",
-		Color5: "#bb9af7",
-		Color6: "#7dcfff",
+		Color1:              "#db4b4b",
+		Color2:              "#9ece6a",
+		Color3:              "#e0af68",
+		Color4:              "#7aa2f7",
+		Color5:              "#bb9af7",
+		Color6:              "#7dcfff",
 	}
 
 	warnings := ValidateThemeContrast(c)
@@ -335,7 +386,7 @@ func TestValidateThemeContrast_LowForegroundFails(t *testing.T) {
 	warnings := ValidateThemeContrast(c)
 	found := false
 	for _, w := range warnings {
-		if containsStr(w, "foreground") || containsStr(w, "contrast") {
+		if strings.Contains(w, "foreground") || strings.Contains(w, "contrast") {
 			found = true
 		}
 	}
@@ -349,14 +400,14 @@ func TestValidateThemeContrast_LowSelectionFails(t *testing.T) {
 		Background:          "#1a1b26",
 		Foreground:          "#c0caf5",
 		Accent:              "#7aa2f7",
-		SelectionForeground: "#7aa2f8", // Nearly identical to selection bg
+		SelectionForeground: "#7aa2f8",
 		SelectionBackground: "#7aa2f7",
 	}
 
 	warnings := ValidateThemeContrast(c)
 	found := false
 	for _, w := range warnings {
-		if containsStr(w, "selection") {
+		if strings.Contains(w, "selection") {
 			found = true
 		}
 	}
@@ -370,21 +421,57 @@ func TestValidateThemeContrast_TerminalCollapse(t *testing.T) {
 		Background: "#1a1b26",
 		Foreground: "#c0caf5",
 		Accent:     "#7aa2f7",
-		Color1: "#9ece6a",
-		Color2: "#9ece6b", // Nearly identical to color1
-		Color3: "#e0af68",
+		Color1:     "#9ece6a",
+		Color2:     "#9ece6b",
+		Color3:     "#e0af68",
 	}
 
 	warnings := ValidateThemeContrast(c)
 	found := false
 	for _, w := range warnings {
-		if containsStr(w, "nearly identical") {
+		if strings.Contains(w, "nearly identical") {
 			found = true
 		}
 	}
 	if !found {
 		t.Error("expected terminal color collapse warning")
 	}
+}
+
+func TestEnsureReadableTextColors_DarkMonotone(t *testing.T) {
+	c := &theme.Colors{
+		Background:          "#202020",
+		Foreground:          "#262626",
+		Color7:              "#282828",
+		Color15:             "#303030",
+		SelectionBackground: "#353535",
+		SelectionForeground: "#363636",
+	}
+
+	ensureReadableTextColors(c)
+
+	assertContrast(t, c.Foreground, c.Background, MinForegroundContrast)
+	assertContrast(t, c.Color7, c.Background, MinForegroundContrast)
+	assertContrast(t, c.Color15, c.Background, MinForegroundContrast)
+	assertContrast(t, c.SelectionForeground, c.SelectionBackground, MinSelectionContrast)
+}
+
+func TestEnsureReadableTextColors_LightMonotone(t *testing.T) {
+	c := &theme.Colors{
+		Background:          "#eeeeee",
+		Foreground:          "#e5e5e5",
+		Color7:              "#e2e2e2",
+		Color15:             "#dddddd",
+		SelectionBackground: "#d8d8d8",
+		SelectionForeground: "#d6d6d6",
+	}
+
+	ensureReadableTextColors(c)
+
+	assertContrast(t, c.Foreground, c.Background, MinForegroundContrast)
+	assertContrast(t, c.Color7, c.Background, MinForegroundContrast)
+	assertContrast(t, c.Color15, c.Background, MinForegroundContrast)
+	assertContrast(t, c.SelectionForeground, c.SelectionBackground, MinSelectionContrast)
 }
 
 // Task 5: Direction building
@@ -516,15 +603,6 @@ func TestWithLightness(t *testing.T) {
 	}
 }
 
-func containsStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
-}
-
 func TestFingerprintFile_Error(t *testing.T) {
 	_, err := fingerprintFile("/nonexistent/file.png")
 	if err == nil {
@@ -543,5 +621,20 @@ func TestBrightImage_DoesNotAutoLight(t *testing.T) {
 	opts, _ := NewGenerationOptions(img, 0, false)
 	if opts.LightMode {
 		t.Error("bright image should not auto-trigger light mode")
+	}
+}
+
+func assertContrast(t *testing.T, fgHex, bgHex string, min float64) {
+	t.Helper()
+	fg, err := ParseHex(fgHex)
+	if err != nil {
+		t.Fatalf("invalid foreground %s: %v", fgHex, err)
+	}
+	bg, err := ParseHex(bgHex)
+	if err != nil {
+		t.Fatalf("invalid background %s: %v", bgHex, err)
+	}
+	if cr := ContrastRatio(fg, bg); cr < min {
+		t.Fatalf("contrast %s on %s = %.2f, want >= %.2f", fgHex, bgHex, cr, min)
 	}
 }

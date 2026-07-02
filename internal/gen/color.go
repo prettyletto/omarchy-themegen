@@ -152,9 +152,3 @@ func clampInt(v, lo, hi int) int {
 	}
 	return v
 }
-
-type HexColor string
-
-func (h HexColor) RGB() (RGB, error) {
-	return ParseHex(string(h))
-}

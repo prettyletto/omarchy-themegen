@@ -20,87 +20,31 @@ The application has one durable output shape: an Omarchy theme directory. Archiv
 ## Main Areas Of Responsibility
 
 ### Input Validation
+Accepts one image path and validates via ImageMagick `magick`: readable file, still image, opaque image, minimum 800x450 dimensions, source fingerprint, UI-heavy screenshot warning.
 
-Accepts one image path and validates:
+### Theme Generation (`internal/gen/`)
+Turns the image into exactly three Theme Directions via offline palette extraction, HSL-based color math, and deterministic candidate generation. Produces foreground/background/accent/terminal colors with seed-based reproducibility.
 
-- readable file;
-- still image;
-- opaque image;
-- minimum dimensions;
-- source fingerprint;
-- UI-heavy screenshot warning.
+### Composition (`internal/theme/compose.go`)
+Implements Contract A: component-mix merges color roles from group-selected directions. Assets group provides master background/foreground, Terminals group provides color0-15+cursor, Desktop Shell provides accent. Per-surface overrides win over groups.
 
-It does not extract palettes or write theme files.
+### Workflow (`internal/workflow/`)
+Single entry point: `Run(Options) → Result`. Encapsulates generation → composition → validation → export → archive → recipe → reproducible archive. CLI and recipe replay both use this module.
 
-### Theme Generation
+### Preview (`internal/preview/`)
+- Terminal capability detection (Kitty, iTerm2, Sixel, ANSI fallback)
+- Direction and composed preview PNG generation via magick
+- Preview cache keyed by fingerprint+seed+mode
+- Local browser preview server with session token auth, validation, and idle timeout
 
-Turns the image into exactly three Theme Directions.
+### Export (`internal/export/`)
+Writes Omarchy theme directory, archives, recipes, README, neovim.lua. Enforces overwrite backup policy. Supports archive-only mode (no local theme dir write).
 
-It owns:
-
-- image-derived palette candidates;
-- semantic color assignment;
-- terminal color contract;
-- direction labels;
-- deterministic seed/style option handling;
-- light-theme request handling.
-
-It does not know output paths or Omarchy file layout.
-
-### Composition
-
-Turns user choices into one Theme Model.
-
-It owns:
-
-- whole-theme selection;
-- Surface Group selection;
-- per-surface overrides;
-- cross-direction mixing;
-- selection provenance;
-- conflict warnings.
-
-Composition is the key architectural seam. TUI, browser preview, CLI flags, and recipe files all feed the same composition rules. Export never consumes UI state directly.
-
-### Preview
-
-Renders the current Theme Model for decision support.
-
-It owns:
-
-- TUI/terminal preview;
-- PNG preview assets;
-- optional local browser companion preview;
-- browser/TUI selection synchronization for the active session.
-
-Previews are representative, not authoritative. Export correctness comes from the Theme Model and validation.
-
-### Export
-
-Writes artifacts from one validated Theme Model.
-
-It owns:
-
-- Omarchy theme directory export;
-- archive export;
-- recipe export;
-- README generation;
-- overwrite backup policy;
-- structural post-write validation.
-
-It does not run `omarchy theme set`.
+### TUI (`internal/tui/`)
+12-step keyboard-only TUI: validating → generation → mode select → comparison/group select → override select → naming → confirm → export → result → apply → done. Browser preview launch via `b` key.
 
 ### Apply
-
-Delegates to Omarchy after export and explicit confirmation.
-
-It owns only:
-
-- presenting the apply consequence;
-- invoking Omarchy;
-- surfacing errors.
-
-It does not implement Omarchy's theme switching behavior.
+Delegates to `omarchy theme set` after separate confirmation. Uses Omarchy discovery for availability checks.
 
 ## Boundaries That Must Stay Clear
 

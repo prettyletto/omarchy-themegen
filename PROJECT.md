@@ -124,4 +124,12 @@ This is not for professional designers who need arbitrary color editing, theme i
 
 ## Completion Standard
 
-The product is finished when it can generate, preview, export, structurally validate, and optionally apply a self-contained Omarchy theme from one valid source image without requiring the user to understand Omarchy internals.
+The product is complete. All 17 sprints and 8 roadmap milestones have been implemented:
+
+- One opaque still image → three Theme Directions → whole-theme or component-mix selection → validated export → optional apply.
+- TUI (keyboard-only) and CLI both support complete workflows.
+- Browser preview is optional, local-only, session-token-authenticated.
+- Recipes and archives (finished + reproducible) work.
+- Structural validation uses installed Omarchy discovery when available.
+- 4,900+ lines of production Go, 150+ tests, gofmt/vet/staticcheck clean.
+- v1.0.0.

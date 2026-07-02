@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/anomalyco/omarchy-themegen/internal/export"
-	"github.com/anomalyco/omarchy-themegen/internal/image"
-	"github.com/anomalyco/omarchy-themegen/internal/theme"
+	"github.com/prettyletto/omarchy-themegen/internal/export"
+	"github.com/prettyletto/omarchy-themegen/internal/image"
+	"github.com/prettyletto/omarchy-themegen/internal/theme"
 )
 
 func hasMagickInValidate() bool {
@@ -16,11 +16,34 @@ func hasMagickInValidate() bool {
 	return err == nil
 }
 
+func stubOmarchyTemplatesForTests(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	templateDir := filepath.Join(root, "default", "themed")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatalf("create template dir: %v", err)
+	}
+	for _, name := range []string{
+		"alacritty.toml.tpl", "btop.theme.tpl", "chromium.theme.tpl", "foot.ini.tpl",
+		"ghostty.conf.tpl", "gum.env.conf.tpl", "helix.toml.tpl", "hyprland-preview-share-picker.css.tpl",
+		"hyprland.conf.tpl", "hyprlock.conf.tpl", "keyboard.rgb.tpl", "kitty.conf.tpl",
+		"mako.ini.tpl", "obsidian.css.tpl", "swayosd.css.tpl", "walker.css.tpl", "waybar.css.tpl",
+	} {
+		if err := os.WriteFile(filepath.Join(templateDir, name), []byte("foreground={{ foreground }}\nbackground={{ background }}\n"), 0644); err != nil {
+			t.Fatalf("write template %s: %v", name, err)
+		}
+	}
+	t.Setenv("OMARCHY_PATH", root)
+}
+
 func buildTestModel(t *testing.T, name string) *theme.ThemeModel {
 	t.Helper()
 	if !hasMagickInValidate() {
 		t.Skip("magick not available")
 	}
+
+	stubOmarchyTemplatesForTests(t)
+
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "source.png")
 	cmd := exec.Command("magick", "-size", "800x450", "xc:#112233", imgPath)

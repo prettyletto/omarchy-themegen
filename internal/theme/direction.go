@@ -1,19 +1,14 @@
 package theme
 
-import "github.com/anomalyco/omarchy-themegen/internal/image"
+import "github.com/prettyletto/omarchy-themegen/internal/image"
 
 type Direction struct {
-	ID           int
-	Label        string
-	Fingerprint  string
-	Colors       *Colors
-	Warnings     []string
-	LightMode    bool
-}
-
-type DirectionSet struct {
-	Directions []Direction
-	ImageResult *image.Result
+	ID          int
+	Label       string
+	Fingerprint string
+	Colors      *Colors
+	Warnings    []string
+	LightMode   bool
 }
 
 func NewThemeModelFromDirection(name, sourceImage string, imgResult *image.Result, dir Direction) (*ThemeModel, error) {
@@ -33,7 +28,7 @@ func NewThemeModelFromDirection(name, sourceImage string, imgResult *image.Resul
 	return &ThemeModel{
 		Name:           name,
 		NormalizedName: normalized,
-		Version:        "0.2.0-dev",
+		Version:        "0.1.0-dev",
 		SourceImage:    sourceImage,
 		ImageResult:    imgResult,
 		Colors:         dir.Colors,

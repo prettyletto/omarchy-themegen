@@ -9,11 +9,11 @@ import (
 const GeneratorVersion = "0.2.0-dev"
 
 type GenerationOptions struct {
-	SourcePath    string
-	Fingerprint   string
-	Seed          int
-	LightMode     bool
-	GeneratorVer  string
+	SourcePath   string
+	Fingerprint  string
+	Seed         int
+	LightMode    bool
+	GeneratorVer string
 }
 
 func NewGenerationOptions(sourcePath string, seed int, lightMode bool) (*GenerationOptions, error) {

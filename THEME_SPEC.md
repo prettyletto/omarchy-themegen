@@ -102,6 +102,17 @@ Supported slots:
 
 VS Code is excluded.
 
+## Component-Mix Composition Contract (Contract A)
+
+Component-mix mode produces one final `colors.toml` by merging color roles from group-selected directions:
+
+- **Assets And System** group (master): provides `background`, `foreground`, `selection_foreground`, `selection_background`
+- **Terminals And TUI** group: provides `cursor`, `color0`–`color15` (terminal palette)
+- **Desktop Shell** group: provides `accent`
+- **Editor** group: no color override (Neovim consumes full palette)
+
+If all groups select the same direction, the result is identical to whole-theme mode. Per-surface overrides win over group selections for their specific color roles.
+
 ## Generated Files From Theme Model
 
 Directly generated:
