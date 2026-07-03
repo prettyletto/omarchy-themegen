@@ -6,7 +6,9 @@ It generates five theme directions, lets you choose a whole-theme or component-m
 
 ## Demo
 
-[Watch the demo](assets/demo.mp4)
+<video controls src="assets/demo.mp4" title="omarchy-themegen demo"></video>
+
+If the player does not render, [watch or download the demo](assets/demo.mp4).
 
 ## Install
 
