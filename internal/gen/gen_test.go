@@ -163,7 +163,7 @@ func TestExtractDominantColors_Deterministic(t *testing.T) {
 }
 
 // Task 3: Palette generation
-func TestGeneratePalettes_ThreeCandidates(t *testing.T) {
+func TestGeneratePalettes_DirectionCount(t *testing.T) {
 	if !hasMagick() {
 		t.Skip("magick not available")
 	}
@@ -180,8 +180,8 @@ func TestGeneratePalettes_ThreeCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GeneratePalettes: %v", err)
 	}
-	if len(candidates) != 3 {
-		t.Fatalf("expected 3 candidates, got %d", len(candidates))
+	if len(candidates) != theme.DirectionCount {
+		t.Fatalf("expected %d candidates, got %d", theme.DirectionCount, len(candidates))
 	}
 
 	for i, c := range candidates {
@@ -229,8 +229,8 @@ func TestGeneratePalettes_DirectionsAreVisuallyDistinctAtSeedZero(t *testing.T) 
 	if err != nil {
 		t.Fatalf("GeneratePalettes: %v", err)
 	}
-	if len(candidates) != 3 {
-		t.Fatalf("expected 3 candidates, got %d", len(candidates))
+	if len(candidates) != theme.DirectionCount {
+		t.Fatalf("expected %d candidates, got %d", theme.DirectionCount, len(candidates))
 	}
 
 	seenAccents := map[string]bool{}
@@ -239,11 +239,11 @@ func TestGeneratePalettes_DirectionsAreVisuallyDistinctAtSeedZero(t *testing.T) 
 		seenAccents[c.Colors.Accent] = true
 		seenBackgrounds[c.Colors.Background] = true
 	}
-	if len(seenAccents) != 3 {
-		t.Fatalf("expected three distinct accents, got %v", seenAccents)
+	if len(seenAccents) != theme.DirectionCount {
+		t.Fatalf("expected %d distinct accents, got %v", theme.DirectionCount, seenAccents)
 	}
-	if len(seenBackgrounds) != 3 {
-		t.Fatalf("expected three distinct backgrounds, got %v", seenBackgrounds)
+	if len(seenBackgrounds) != theme.DirectionCount {
+		t.Fatalf("expected %d distinct backgrounds, got %v", theme.DirectionCount, seenBackgrounds)
 	}
 }
 
@@ -326,8 +326,8 @@ func TestGeneratePalettes_LightMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GeneratePalettes light: %v", err)
 	}
-	if len(candidates) != 3 {
-		t.Fatalf("expected 3 light candidates, got %d", len(candidates))
+	if len(candidates) != theme.DirectionCount {
+		t.Fatalf("expected %d light candidates, got %d", theme.DirectionCount, len(candidates))
 	}
 
 	for i, c := range candidates {

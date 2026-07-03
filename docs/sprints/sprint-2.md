@@ -4,7 +4,7 @@
 
 Replace the Sprint 1 static color set with real offline image-derived Theme Direction generation.
 
-At the end of this sprint, `omarchy-themegen` should take one valid source image, generate exactly three deterministic Theme Directions, validate their palettes, allow non-interactive whole-theme selection, and export the selected direction through the Sprint 1 export path.
+At the end of this sprint, `omarchy-themegen` should take one valid source image, generate five deterministic Theme Directions, validate their palettes, allow non-interactive whole-theme selection, and export the selected direction through the Sprint 1 export path.
 
 This sprint intentionally does not implement TUI screens, browser preview, component-mix, recipe files, or Omarchy apply.
 
@@ -78,7 +78,7 @@ Blocked by: Task 2
 
 ### What to build
 
-Generate exactly three visibly distinct palette candidates from the extracted colors.
+Generate five visibly distinct palette candidates from the extracted colors.
 
 Each candidate must include:
 
@@ -203,7 +203,7 @@ Support explicit light-theme generation for whole-theme directions.
 
 When the user requests light generation:
 
-- all three directions must be light-theme attempts;
+- all five directions must be light-theme attempts;
 - generated palettes must pass contrast validation;
 - export writes `light.mode`;
 - image brightness alone must not trigger light generation.
@@ -315,4 +315,3 @@ The tests should verify generated `colors.toml`, required assets, structural val
 - manual color editing;
 - theme import/merge;
 - VS Code generation.
-

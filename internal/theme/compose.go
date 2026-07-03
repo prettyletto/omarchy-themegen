@@ -7,6 +7,10 @@ import (
 	"github.com/prettyletto/omarchy-themegen/internal/image"
 )
 
+const DirectionCount = 5
+
+const DirectionRangeLabel = "1-5"
+
 type SurfaceGroup struct {
 	ID       string
 	Label    string
@@ -73,7 +77,7 @@ func ValidSurface(name string) bool {
 
 type Composition struct {
 	Mode         string         // "whole-theme" or "component-mix"
-	Directions   []Direction    // 3 source directions
+	Directions   []Direction    // source directions
 	GroupSources map[string]int // group ID -> direction ID
 	Overrides    map[string]int // surface name -> direction ID
 	Warnings     []string
@@ -91,8 +95,8 @@ func (c *Composition) SetGroupSource(groupID string, dirID int) error {
 	if _, ok := GroupByID(groupID); !ok {
 		return fmt.Errorf("unknown surface group: %s", groupID)
 	}
-	if dirID < 1 || dirID > 3 {
-		return fmt.Errorf("invalid direction %d (must be 1-3)", dirID)
+	if !ValidDirectionID(dirID) {
+		return fmt.Errorf("invalid direction %d (must be %s)", dirID, DirectionRangeLabel)
 	}
 	c.GroupSources[groupID] = dirID
 	return nil
@@ -102,11 +106,15 @@ func (c *Composition) SetOverride(surfaceName string, dirID int) error {
 	if !ValidSurface(surfaceName) {
 		return fmt.Errorf("unknown or unsupported surface: %s", surfaceName)
 	}
-	if dirID < 1 || dirID > 3 {
-		return fmt.Errorf("invalid direction %d (must be 1-3)", dirID)
+	if !ValidDirectionID(dirID) {
+		return fmt.Errorf("invalid direction %d (must be %s)", dirID, DirectionRangeLabel)
 	}
 	c.Overrides[surfaceName] = dirID
 	return nil
+}
+
+func ValidDirectionID(dirID int) bool {
+	return dirID >= 1 && dirID <= DirectionCount
 }
 
 func (c *Composition) ClearOverride(surfaceName string) {
@@ -125,7 +133,7 @@ func (c *Composition) Validate() []string {
 	}
 
 	for surface, dirID := range c.Overrides {
-		if dirID < 1 || dirID > 3 {
+		if !ValidDirectionID(dirID) {
 			errs = append(errs, fmt.Sprintf("override for %s has invalid direction %d", surface, dirID))
 		}
 		if !ValidSurface(surface) {

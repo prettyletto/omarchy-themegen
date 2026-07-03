@@ -40,7 +40,7 @@ Exit criteria:
 
 ## Milestone 3: Image-To-Directions
 
-Outcome: one valid source image produces exactly three Theme Directions.
+Outcome: one valid source image produces five Theme Directions.
 
 Work:
 

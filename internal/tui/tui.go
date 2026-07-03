@@ -317,7 +317,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case stepModeSelect:
 			m.mixMode = true
 		case stepComparison:
-			if m.selected < 2 {
+			if m.selected < len(m.directions)-1 {
 				m.selected++
 			}
 			return m, m.drawInlinePreviewCmd()
@@ -332,8 +332,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "tab":
-		if m.step == stepComparison {
-			m.selected = (m.selected + 1) % 3
+		if m.step == stepComparison && len(m.directions) > 0 {
+			m.selected = (m.selected + 1) % len(m.directions)
 			return m, m.drawInlinePreviewCmd()
 		}
 
@@ -352,10 +352,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.clearInlinePreviewCmd()
 		}
 
-	case "1", "2", "3":
+	case "1", "2", "3", "4", "5":
+		dirID := int(msg.Runes[0] - '0')
+		if !theme.ValidDirectionID(dirID) || dirID > len(m.directions) {
+			return m, nil
+		}
 		if m.step == stepGroupSelect {
 			m.ensureComposition("component-mix")
-			dirID := int(msg.Runes[0] - '0')
 			g := theme.AllGroups[m.groupCursor]
 			m.composition.SetGroupSource(g.ID, dirID)
 			m.message = ""
@@ -363,7 +366,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.step == stepOverrideSelect {
 			m.ensureComposition("component-mix")
-			dirID := int(msg.Runes[0] - '0')
 			surfaces := m.allOverrideSurfaces()
 			if m.overrideCursor < len(surfaces) {
 				surf := surfaces[m.overrideCursor]
@@ -498,7 +500,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		// Validate all groups have direction
 		for _, g := range theme.AllGroups {
 			if _, ok := m.composition.GroupSources[g.ID]; !ok {
-				m.message = fmt.Sprintf("Group %s has no direction assigned. Press a number key 1-3.", g.Label)
+				m.message = fmt.Sprintf("Group %s has no direction assigned. Press a number key %s.", g.Label, theme.DirectionRangeLabel)
 				return m, nil
 			}
 		}

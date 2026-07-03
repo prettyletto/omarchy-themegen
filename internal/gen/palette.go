@@ -42,12 +42,14 @@ func GeneratePalettes(dominantColors []DominantColor, opts *GenerationOptions) (
 	offset1 := seedAbs % colorCount
 	offset2 := (seedAbs + max(1, colorCount/3)) % colorCount
 	offset3 := (seedAbs + max(2, (colorCount*2)/3)) % colorCount
+	offset4 := (seedAbs + max(3, colorCount/2)) % colorCount
+	offset5 := (seedAbs + max(4, (colorCount*3)/4)) % colorCount
 
 	mute1 := 0.0
 	mute2 := 0.12 + float64(seedAbs%5)*0.02
 	mute3 := 0.22 + float64(seedAbs%7)*0.02
 
-	candidates := make([]PaletteCandidate, 3)
+	candidates := make([]PaletteCandidate, 5)
 
 	candidates[0] = buildDirection(1, "Vibrant", byLightness, bySaturation, offset1, mute1, directionProfile{
 		bgLightness:     0.09,
@@ -69,6 +71,20 @@ func GeneratePalettes(dominantColors []DominantColor, opts *GenerationOptions) (
 		accentLightness: 0.46,
 		accentSatFloor:  0.28,
 		accentSatCeil:   0.45,
+	})
+
+	candidates[3] = buildDirection(4, "Colorful", byLightness, bySaturation, offset4, 0.04, directionProfile{
+		bgLightness:     0.11,
+		fgLightness:     0.86,
+		accentLightness: 0.58,
+		accentSatFloor:  0.86,
+	})
+
+	candidates[4] = buildDirection(5, "Deep", byLightness, bySaturation, offset5, 0.08, directionProfile{
+		bgLightness:     0.06,
+		fgLightness:     0.82,
+		accentLightness: 0.50,
+		accentSatFloor:  0.64,
 	})
 
 	if opts.LightMode {
@@ -234,16 +250,19 @@ func generateTerminalColors(bg, fg, accent RGB, srcColors []DominantColor, muteA
 		{6, 0.5, "cyan"},
 	}
 
+	accentFamily := hueDiversity(srcColors) < 0.18
 	used := map[int]bool{}
 	for _, t := range hueTargets {
-		idx, best := findBestHueColor(srcColors, t.hue, used)
-		if best != nil {
+		idx, best, dist := findBestHueColor(srcColors, t.hue, used)
+		if best != nil && (!accentFamily || dist <= 0.14) {
 			rgb := best.Color
 			hsl := rgb.ToHSL()
 			hsl.L = clamp(hsl.L+0.05, 0.25, 0.55)
 			hsl.S = clamp(hsl.S-muteAmount, 0.3, 1.0)
 			colors[t.slot] = hsl.ToRGB().Hex()
 			used[idx] = true
+		} else if accentFamily {
+			colors[t.slot] = accentFamilyTermColor(accent, t.slot, muteAmount).Hex()
 		} else {
 			colors[t.slot] = defaultTermColor(t.slot).Hex()
 		}
@@ -317,7 +336,7 @@ func textLightnessLadder(bg RGB, current float64) []float64 {
 	return []float64{math.Min(current, 0.24), 0.18, 0.12, 0.06, 0.0}
 }
 
-func findBestHueColor(src []DominantColor, targetHue float64, used map[int]bool) (int, *DominantColor) {
+func findBestHueColor(src []DominantColor, targetHue float64, used map[int]bool) (int, *DominantColor, float64) {
 	bestIdx := -1
 	var best *DominantColor
 	bestDist := math.MaxFloat64
@@ -340,7 +359,61 @@ func findBestHueColor(src []DominantColor, targetHue float64, used map[int]bool)
 			bestIdx = i
 		}
 	}
-	return bestIdx, best
+	return bestIdx, best, bestDist
+}
+
+func hueDiversity(src []DominantColor) float64 {
+	var hues []float64
+	for _, c := range src {
+		hsl := c.Color.ToHSL()
+		if hsl.S >= 0.12 {
+			hues = append(hues, hsl.H)
+		}
+	}
+	if len(hues) < 2 {
+		return 0
+	}
+	maxGap := 0.0
+	sort.Float64s(hues)
+	for i := 1; i < len(hues); i++ {
+		if gap := hues[i] - hues[i-1]; gap > maxGap {
+			maxGap = gap
+		}
+	}
+	if wrapGap := hues[0] + 1 - hues[len(hues)-1]; wrapGap > maxGap {
+		maxGap = wrapGap
+	}
+	return 1 - maxGap
+}
+
+func accentFamilyTermColor(accent RGB, slot int, muteAmount float64) RGB {
+	hsl := accent.ToHSL()
+	type transform struct {
+		hueShift float64
+		sat      float64
+		light    float64
+	}
+	transforms := map[int]transform{
+		1: {0.00, 0.90, 0.42},
+		2: {0.06, 0.55, 0.36},
+		3: {0.10, 0.68, 0.44},
+		4: {-0.08, 0.50, 0.48},
+		5: {-0.04, 0.70, 0.50},
+		6: {0.04, 0.60, 0.52},
+	}
+	t := transforms[slot]
+	h := hsl.H + t.hueShift
+	for h < 0 {
+		h += 1
+	}
+	for h >= 1 {
+		h -= 1
+	}
+	return HSL{
+		H: h,
+		S: clamp(math.Max(hsl.S, t.sat)-muteAmount*0.35, 0.35, 1),
+		L: t.light,
+	}.ToRGB()
 }
 
 func defaultTermColor(slot int) RGB {

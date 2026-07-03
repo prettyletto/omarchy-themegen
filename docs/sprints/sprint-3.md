@@ -101,7 +101,7 @@ This is a terminal representation, not pixel-perfect app preview.
 
 ### Acceptance criteria
 
-- [ ] All three directions are visible or reachable by keyboard.
+- [ ] All five directions are visible or reachable by keyboard.
 - [ ] Direction labels and ids are clear.
 - [ ] Color swatches render in terminals that support ANSI color.
 - [ ] Non-color fallback text remains understandable.
@@ -129,7 +129,7 @@ Keyboard behavior should be simple and discoverable:
 
 ### Acceptance criteria
 
-- [ ] User can select one of the three directions using keyboard only.
+- [ ] User can select one of the five directions using keyboard only.
 - [ ] Selection creates one Theme Model.
 - [ ] Selected Theme Model matches the corresponding generated direction.
 - [ ] User can go back to comparison before export.
@@ -316,4 +316,3 @@ Do not claim component-mix, browser preview, recipes, or reproducible archives a
 - mouse support;
 - theme import/merge;
 - VS Code generation.
-

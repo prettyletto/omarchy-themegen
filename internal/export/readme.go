@@ -57,7 +57,7 @@ func GenerateREADME(tm *theme.ThemeModel) string {
 	b.WriteString("Or export non-interactively:\n\n")
 	b.WriteString("```bash\n")
 	b.WriteString("# Export a generated theme\n")
-	b.WriteString("omarchy-themegen --image <path-to-image> --name <theme-name> --direction <1|2|3>\n\n")
+	b.WriteString(fmt.Sprintf("omarchy-themegen --image <path-to-image> --name <theme-name> --direction <%s>\n\n", theme.DirectionRangeLabel))
 	b.WriteString("# Export with overwrite confirmation\n")
 	b.WriteString("omarchy-themegen --image <path-to-image> --name <theme-name> --direction 1 --yes\n\n")
 	b.WriteString("# Export a light theme\n")

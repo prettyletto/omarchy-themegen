@@ -18,7 +18,7 @@ type Options struct {
 	OutputDir    string
 	Seed         int
 	LightMode    bool
-	DirectionID  int // 1-3 for whole-theme
+	DirectionID  int // 1-based direction ID for whole-theme
 	Mode         string
 	GroupSources map[string]int
 	Overrides    map[string]int

@@ -137,7 +137,7 @@ Do not add online services, AI APIs, or manual color editing.
 
 ### Acceptance criteria
 
-- [ ] Each fixture produces exactly three valid Theme Directions.
+- [ ] Each fixture produces five valid Theme Directions.
 - [ ] Directions are visibly distinct enough to choose from.
 - [ ] Foreground/background contrast passes.
 - [ ] Selection contrast passes.

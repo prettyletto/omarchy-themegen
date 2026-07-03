@@ -24,6 +24,8 @@ func makeDirections() []theme.Direction {
 		{ID: 1, Label: "Vibrant", Colors: colors},
 		{ID: 2, Label: "Balanced", Colors: colors},
 		{ID: 3, Label: "Muted", Colors: colors},
+		{ID: 4, Label: "Colorful", Colors: colors},
+		{ID: 5, Label: "Deep", Colors: colors},
 	}
 }
 
@@ -119,8 +121,8 @@ func TestGenerateDirectionPreviews(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateDirectionPreviews: %v", err)
 	}
-	if len(paths) != 3 {
-		t.Errorf("expected 3 previews, got %d", len(paths))
+	if len(paths) != theme.DirectionCount {
+		t.Errorf("expected %d previews, got %d", theme.DirectionCount, len(paths))
 	}
 	for _, p := range paths {
 		if _, err := os.Stat(p); os.IsNotExist(err) {

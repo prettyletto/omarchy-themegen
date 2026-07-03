@@ -93,7 +93,7 @@ This flow must avoid overwhelming the user. Show groups first, not every individ
 
 ### Acceptance criteria
 
-- [ ] User can assign each Surface Group to one of the three directions.
+- [ ] User can assign each Surface Group to one of the five directions.
 - [ ] Current group selections are visible.
 - [ ] User can reset all groups to a single direction.
 - [ ] User can return to whole-theme mode without losing generated directions.

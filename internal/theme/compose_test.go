@@ -101,9 +101,10 @@ func TestComposition_Validation_MissingGroups(t *testing.T) {
 
 func TestComposition_Validation_InvalidDirection(t *testing.T) {
 	c := NewComposition("component-mix")
-	err := c.SetGroupSource(GroupDesktopShell.ID, 5)
+	invalidDirID := DirectionCount + 1
+	err := c.SetGroupSource(GroupDesktopShell.ID, invalidDirID)
 	if err == nil {
-		t.Error("expected error for invalid direction 5")
+		t.Errorf("expected error for invalid direction %d", invalidDirID)
 	}
 }
 

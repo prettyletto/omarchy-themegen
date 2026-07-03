@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,6 +66,43 @@ func updateModel(m Model, msg tea.Msg) Model {
 	return m
 }
 
+func TestVisibleDirectionRange_ShowsThreeDirectionWindow(t *testing.T) {
+	tests := []struct {
+		name          string
+		selected      int
+		wantStart     int
+		wantEnd       int
+		wantVisible   []int
+		wantInvisible []int
+	}{
+		{name: "start", selected: 0, wantStart: 0, wantEnd: 3, wantVisible: []int{1, 2, 3}, wantInvisible: []int{4, 5}},
+		{name: "middle", selected: 2, wantStart: 1, wantEnd: 4, wantVisible: []int{2, 3, 4}, wantInvisible: []int{1, 5}},
+		{name: "end", selected: 4, wantStart: 2, wantEnd: 5, wantVisible: []int{3, 4, 5}, wantInvisible: []int{1, 2}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			start, end := visibleDirectionRange(tt.selected, theme.DirectionCount, comparisonVisibleDirections)
+			if start != tt.wantStart || end != tt.wantEnd {
+				t.Fatalf("expected range %d-%d, got %d-%d", tt.wantStart, tt.wantEnd, start, end)
+			}
+
+			m := Model{step: stepComparison, selected: tt.selected, directions: staticTestDirections(theme.DirectionCount)}
+			view := m.viewComparison()
+			for _, id := range tt.wantVisible {
+				if !strings.Contains(view, fmt.Sprintf("Direction %d:", id)) {
+					t.Fatalf("expected view to include direction %d", id)
+				}
+			}
+			for _, id := range tt.wantInvisible {
+				if strings.Contains(view, fmt.Sprintf("Direction %d:", id)) {
+					t.Fatalf("expected view to hide direction %d", id)
+				}
+			}
+		})
+	}
+}
+
 func TestTUI_StateTransitions_ValidImage(t *testing.T) {
 	if !hasMagick() {
 		t.Skip("magick not available")
@@ -103,8 +141,8 @@ func TestTUI_StateTransitions_ValidImage(t *testing.T) {
 	if m.step != stepComparison {
 		t.Fatalf("expected step comparison, got %v", m.step)
 	}
-	if len(m.directions) != 3 {
-		t.Fatalf("expected 3 directions, got %d", len(m.directions))
+	if len(m.directions) != theme.DirectionCount {
+		t.Fatalf("expected %d directions, got %d", theme.DirectionCount, len(m.directions))
 	}
 	if m.selected != 0 {
 		t.Fatalf("expected selected=0, got %d", m.selected)
@@ -423,8 +461,8 @@ func TestTUI_InlinePreviewSeparatesViewAndDrawOutput(t *testing.T) {
 	if strings.Contains(placeholder, "\x1b_G") {
 		t.Fatal("view placeholder must not contain image escape bytes")
 	}
-	if got := strings.Count(placeholder, "\n"); got != 18 {
-		t.Fatalf("expected 18 reserved rows, got %d", got)
+	if got := strings.Count(placeholder, "\n"); got != inlinePreviewRows {
+		t.Fatalf("expected %d reserved rows, got %d", inlinePreviewRows, got)
 	}
 
 	draw := m.inlinePreviewOutput(path)
@@ -487,6 +525,19 @@ func makeTestModelWithDirections(t *testing.T) Model {
 		t.Fatalf("expected stepComparison after whole-theme enter, got %v", m.step)
 	}
 	return m
+}
+
+func staticTestDirections(count int) []theme.Direction {
+	labels := []string{"Vibrant", "Balanced", "Muted", "Colorful", "Deep"}
+	directions := make([]theme.Direction, count)
+	for i := range directions {
+		label := fmt.Sprintf("Test %d", i+1)
+		if i < len(labels) {
+			label = labels[i]
+		}
+		directions[i] = theme.Direction{ID: i + 1, Label: label, Colors: theme.StaticColors()}
+	}
+	return directions
 }
 
 func getGenDoneMsg(t *testing.T, img string) genDoneMsg {

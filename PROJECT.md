@@ -7,7 +7,7 @@
 The product is complete when a user can:
 
 1. Run `omarchy-themegen <image>` and enter a keyboard-only TUI.
-2. Generate exactly three valid theme directions from that one image.
+2. Generate five valid theme directions from that one image.
 3. Choose either a whole direction or a controlled component-mix composition.
 4. Preview the final composition in the terminal/TUI, with optional local browser preview.
 5. Provide a theme name explicitly.
@@ -44,10 +44,10 @@ This is not for professional designers who need arbitrary color editing, theme i
 
 ### Generation
 
-- exactly three theme directions;
+- five theme directions;
 - deterministic output for the same image and seed/style option;
 - full regeneration only, never single-surface regeneration;
-- explicit light-theme request; if requested, all three directions are light-theme attempts;
+- explicit light-theme request; if requested, all five directions are light-theme attempts;
 - no manual color editing.
 
 ### Selection

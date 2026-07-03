@@ -20,8 +20,9 @@ var (
 	accentStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
 )
 
-const inlinePreviewRows = 18
-const inlinePreviewStartRow = 5
+const inlinePreviewRows = 14
+const inlinePreviewStartRow = 4
+const comparisonVisibleDirections = 3
 
 func (m Model) View() string {
 	switch m.step {
@@ -111,7 +112,14 @@ func (m Model) viewComparison() string {
 		b.WriteString("\n")
 	}
 
-	for i, d := range m.directions {
+	start, end := visibleDirectionRange(m.selected, len(m.directions), comparisonVisibleDirections)
+	if start > 0 {
+		b.WriteString(dimStyle.Render(fmt.Sprintf("  ↑ %d more direction(s)", start)))
+		b.WriteString("\n\n")
+	}
+
+	for i := start; i < end; i++ {
+		d := m.directions[i]
 		prefix := "  "
 		label := fmt.Sprintf("Direction %d: %s", d.ID, d.Label)
 		if d.LightMode {
@@ -185,14 +193,41 @@ func (m Model) viewComparison() string {
 		}
 		b.WriteString("\n")
 	}
+	if end < len(m.directions) {
+		b.WriteString(dimStyle.Render(fmt.Sprintf("  ↓ %d more direction(s)", len(m.directions)-end)))
+		b.WriteString("\n")
+	}
 
-	b.WriteString(dimStyle.Render(fmt.Sprintf("\nDirection %d selected", m.selected+1)))
+	b.WriteString(dimStyle.Render(fmt.Sprintf("\nShowing %d-%d of %d • Direction %d selected", start+1, end, len(m.directions), m.selected+1)))
 	if m.browserURL != "" {
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render("Browser: " + m.browserURL))
 	}
 
 	return b.String()
+}
+
+func visibleDirectionRange(selected, total, visible int) (int, int) {
+	if total <= 0 {
+		return 0, 0
+	}
+	if visible <= 0 || visible >= total {
+		return 0, total
+	}
+	if selected < 0 {
+		selected = 0
+	}
+	if selected >= total {
+		selected = total - 1
+	}
+	start := selected - visible/2
+	if start < 0 {
+		start = 0
+	}
+	if start+visible > total {
+		start = total - visible
+	}
+	return start, start + visible
 }
 
 func (m Model) viewNaming() string {
@@ -525,8 +560,8 @@ func (m Model) inlinePreviewOutput(path string) string {
 		return ""
 	}
 	cols := m.width - 4
-	if cols > 96 {
-		cols = 96
+	if cols > 72 {
+		cols = 72
 	}
 	if cols < 40 {
 		cols = 40

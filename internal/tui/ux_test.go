@@ -65,7 +65,7 @@ func TestUX_ComponentMixFlow(t *testing.T) {
 
 	for i, g := range theme.AllGroups {
 		m.groupCursor = i
-		dirID := (i % 3) + 1
+		dirID := (i % theme.DirectionCount) + 1
 		m = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{rune('0' + dirID)}})
 		if _, ok := m.composition.GroupSources[g.ID]; !ok {
 			t.Errorf("group %s not assigned", g.ID)

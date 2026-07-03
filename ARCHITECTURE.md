@@ -9,7 +9,7 @@ The application has one durable output shape: an Omarchy theme directory. Archiv
 ## Core Flow
 
 1. Validate one opaque still source image.
-2. Generate exactly three Theme Directions.
+2. Generate five Theme Directions.
 3. Let the user select a whole direction or compose a component mix.
 4. Resolve the selection into one Theme Model.
 5. Render previews from that Theme Model.
@@ -23,7 +23,7 @@ The application has one durable output shape: an Omarchy theme directory. Archiv
 Accepts one image path and validates via ImageMagick `magick`: readable file, still image, opaque image, minimum 800x450 dimensions, source fingerprint, UI-heavy screenshot warning.
 
 ### Theme Generation (`internal/gen/`)
-Turns the image into exactly three Theme Directions via offline palette extraction, HSL-based color math, and deterministic candidate generation. Produces foreground/background/accent/terminal colors with seed-based reproducibility.
+Turns the image into five Theme Directions via offline palette extraction, HSL-based color math, and deterministic candidate generation. Produces foreground/background/accent/terminal colors with seed-based reproducibility.
 
 ### Composition (`internal/theme/compose.go`)
 Implements Contract A: component-mix merges color roles from group-selected directions. Assets group provides master background/foreground, Terminals group provides color0-15+cursor, Desktop Shell provides accent. Per-surface overrides win over groups.

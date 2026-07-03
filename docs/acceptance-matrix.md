@@ -27,7 +27,7 @@
 | Test | Expected | Status |
 |------|----------|--------|
 | TUI whole-theme flow | Validating → Mode Select → Comparison → Naming → Confirm → Export → Result → Apply | HITL |
-| CLI whole-theme export | `--direction 1-3` works | AFK |
+| CLI whole-theme export | `--direction 1-5` works | AFK |
 | CLI missing direction | Clear error | AFK |
 
 ## Component-Mix

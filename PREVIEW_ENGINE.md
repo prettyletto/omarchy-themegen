@@ -6,7 +6,7 @@ Preview gives the user enough visual evidence to choose and validate a final the
 
 ## Required Outputs
 
-- TUI/terminal comparison of exactly three directions;
+- TUI/terminal comparison of five directions;
 - TUI/terminal preview of the current composed Theme Model;
 - PNG `preview.png` at 1800x1012;
 - PNG `preview-unlock.png` at 1920x1080;

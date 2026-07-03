@@ -46,7 +46,7 @@ func run() int {
 	archivePath := flagSet.String("archive_path", "", "Archive output path (default: current directory)")
 	archiveOnly := flagSet.Bool("archive_only", false, "Create archive only, don't write to local theme directory")
 	showVersion := flagSet.Bool("version", false, "Print version and exit")
-	directionID := flagSet.Int("direction", 0, "Direction to export (1, 2, or 3) for whole-theme mode")
+	directionID := flagSet.Int("direction", 0, fmt.Sprintf("Direction to export (%s) for whole-theme mode", theme.DirectionRangeLabel))
 	lightMode := flagSet.Bool("light", false, "Generate light theme directions")
 	seed := flagSet.Int("seed", 0, "Generation seed for deterministic output")
 	mode := flagSet.String("mode", "whole-theme", "Selection mode: whole-theme or component-mix")
@@ -78,10 +78,10 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  omarchy-themegen <image>\n")
 		fmt.Fprintf(os.Stderr, "      Open keyboard-only TUI.\n\n")
-		fmt.Fprintf(os.Stderr, "  omarchy-themegen --image <path> --name <name> --direction <1-3> [flags]\n")
+		fmt.Fprintf(os.Stderr, "  omarchy-themegen --image <path> --name <name> --direction <%s> [flags]\n", theme.DirectionRangeLabel)
 		fmt.Fprintf(os.Stderr, "      Non-interactive whole-theme export.\n\n")
 		fmt.Fprintf(os.Stderr, "  omarchy-themegen --image <path> --name <name> --mode component-mix\n")
-		fmt.Fprintf(os.Stderr, "      --group_desktop_shell <1-3> [other group flags] [flags]\n")
+		fmt.Fprintf(os.Stderr, "      --group_desktop_shell <%s> [other group flags] [flags]\n", theme.DirectionRangeLabel)
 		fmt.Fprintf(os.Stderr, "      Non-interactive component-mix export.\n\n")
 		fmt.Fprintf(os.Stderr, "  omarchy-themegen --image <path> --name <name> --replay <recipe.json> [flags]\n")
 		fmt.Fprintf(os.Stderr, "      Replay a previously exported recipe.\n\n")
@@ -160,8 +160,8 @@ func run() int {
 			return 1
 		}
 	} else {
-		if opts.DirectionID < 1 || opts.DirectionID > 3 {
-			fmt.Fprintln(os.Stderr, "Error: --direction is required (must be 1, 2, or 3)")
+		if !theme.ValidDirectionID(opts.DirectionID) {
+			fmt.Fprintf(os.Stderr, "Error: --direction is required (must be %s)\n", theme.DirectionRangeLabel)
 			return 1
 		}
 	}
@@ -182,16 +182,16 @@ func run() int {
 
 func buildGroupSources(gDesktop, gTerminals, gEditor, gAssets int) map[string]int {
 	m := make(map[string]int)
-	if gDesktop >= 1 && gDesktop <= 3 {
+	if theme.ValidDirectionID(gDesktop) {
 		m[theme.GroupDesktopShell.ID] = gDesktop
 	}
-	if gTerminals >= 1 && gTerminals <= 3 {
+	if theme.ValidDirectionID(gTerminals) {
 		m[theme.GroupTerminalsAndTUI.ID] = gTerminals
 	}
-	if gEditor >= 1 && gEditor <= 3 {
+	if theme.ValidDirectionID(gEditor) {
 		m[theme.GroupEditor.ID] = gEditor
 	}
-	if gAssets >= 1 && gAssets <= 3 {
+	if theme.ValidDirectionID(gAssets) {
 		m[theme.GroupAssetsAndSystem.ID] = gAssets
 	}
 	return m
@@ -209,7 +209,7 @@ func buildOverrides(ovWaybar, ovHyprland, ovHyprlock, ovMako, ovWalker, ovGhostt
 	}
 	m := make(map[string]int)
 	for _, e := range entries {
-		if e.dirID >= 1 && e.dirID <= 3 {
+		if theme.ValidDirectionID(e.dirID) {
 			m[e.surface] = e.dirID
 		}
 	}

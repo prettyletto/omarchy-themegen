@@ -6,7 +6,7 @@ The Theme Model is the single exportable result of generation and selection. It 
 
 ## Theme Direction
 
-A Theme Direction is one generated candidate before final selection. The app always produces exactly three.
+A Theme Direction is one generated candidate before final selection. The app always produces five.
 
 Required direction data:
 

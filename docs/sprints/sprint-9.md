@@ -169,7 +169,7 @@ Docs to check:
 
 ### Acceptance criteria
 
-- [ ] Docs agree on exactly three Theme Directions.
+- [ ] Docs agree on five Theme Directions.
 - [ ] Docs agree on one source image per run.
 - [ ] Docs agree on no manual color editing.
 - [ ] Docs agree on VS Code exclusion.
@@ -251,7 +251,7 @@ Perform the final product-scope review.
 
 The product is complete only when:
 
-- one opaque still image produces exactly three Theme Directions;
+- one opaque still image produces five Theme Directions;
 - whole-theme selection works;
 - component-mix selection works;
 - TUI and CLI both support complete workflows;

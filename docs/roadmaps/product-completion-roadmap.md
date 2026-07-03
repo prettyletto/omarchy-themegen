@@ -12,7 +12,7 @@ Working or mostly working:
 
 - source image validation;
 - offline palette generation;
-- exactly three Theme Directions;
+- five Theme Directions;
 - basic whole-theme CLI export;
 - basic whole-theme TUI flow;
 - basic Omarchy Theme Directory export;
@@ -41,7 +41,7 @@ Not complete enough for release:
 
 The product is complete only when:
 
-- one opaque still image produces exactly three valid Theme Directions;
+- one opaque still image produces five valid Theme Directions;
 - whole-theme mode works in TUI and CLI;
 - component-mix mode actually changes the exported Theme Model or is honestly narrowed;
 - per-surface overrides are usable in the TUI and CLI;
@@ -434,7 +434,7 @@ Replace placeholder browser HTML with usable local controls for:
 
 Acceptance criteria:
 
-- [ ] Browser displays all three directions.
+- [ ] Browser displays all five directions.
 - [ ] Browser displays Surface Groups.
 - [ ] Browser can set and clear overrides through visible controls.
 - [ ] Browser shows current selection state.
@@ -576,7 +576,7 @@ Acceptance criteria:
 - [ ] Selection contrast failure blocks or repairs.
 - [ ] Terminal red/yellow/green collapse blocks or repairs.
 - [ ] Lock screen readability is checked.
-- [ ] Valid representative images still produce exactly three directions.
+- [ ] Valid representative images still produce five directions.
 
 #### Task 2: Improve Direction Distinctness
 

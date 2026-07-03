@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Palette Engine converts one valid opaque still image into exactly three Theme Directions.
+The Palette Engine converts one valid opaque still image into five Theme Directions.
 
 It works fully offline. It may use ImageMagick `magick`, but it must validate the dependency before operations that require it.
 
@@ -47,7 +47,7 @@ Each direction must include:
 - coherent terminal colors;
 - no missing Omarchy color keys.
 
-If the user requests light generation, all three directions must be light-theme attempts. The engine must not infer light mode from image brightness alone.
+If the user requests light generation, all five directions must be light-theme attempts. The engine must not infer light mode from image brightness alone.
 
 ## Validation
 
@@ -82,6 +82,6 @@ Algorithm choice must be driven by real wallpaper outputs and exported Omarchy t
 
 ## Regeneration
 
-Regeneration is full only: all three directions are regenerated with a different deterministic seed/style option.
+Regeneration is full only: all five directions are regenerated with a different deterministic seed/style option.
 
 The engine must never regenerate one Theme Surface in isolation.
