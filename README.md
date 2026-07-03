@@ -4,6 +4,10 @@
 
 It generates five theme directions, lets you choose a whole-theme or component-mix composition, previews the resolved Theme Model, then exports files Omarchy can apply.
 
+## Demo
+
+[Watch the demo](assets/demo.mp4)
+
 ## Install
 
 Requirements:
@@ -97,8 +101,6 @@ go vet ./...
 go test ./...
 go build ./cmd/omarchy-themegen
 ```
-
-Release-oriented checks are documented in `docs/release-checks.md`.
 
 ## License
 
