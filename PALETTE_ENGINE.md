@@ -26,7 +26,7 @@ Screenshots/UI captures are accepted, but the engine should warn when the image 
 
 ## Outputs
 
-Exactly three Theme Directions.
+Exactly five Theme Directions.
 
 Each direction must include:
 
@@ -69,7 +69,7 @@ The engine warns, but does not reject, when:
 
 Do not choose or document a specific palette extraction algorithm yet.
 
-Algorithm choice must be driven by real wallpaper outputs and exported Omarchy themes. Implementation agents should optimize for deterministic, readable, coherent output before advanced color theory.
+Algorithm choice must be driven by real wallpaper outputs and exported Omarchy themes. Implementation should optimize for deterministic, readable, coherent output before advanced color theory.
 
 ## Anti-Complexity Rules
 

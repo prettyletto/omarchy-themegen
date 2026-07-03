@@ -1,0 +1,27 @@
+# Build outputs
+/bin/
+/dist/
+/build/
+/omarchy-themegen
+
+# Test and coverage outputs
+*.test
+coverage.out
+coverage.html
+
+# Local generated archives and recipes
+*.tar.gz
+*.recipe.json
+
+# Local editor and OS files
+.DS_Store
+*.swp
+*.swo
+
+# Local environment files
+.env
+.env.*
+
+# Agent/editor local state is not part of the product repository
+.opencode/
+.claude/

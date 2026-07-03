@@ -124,9 +124,9 @@ This is not for professional designers who need arbitrary color editing, theme i
 
 ## Completion Standard
 
-The product is complete. All 17 sprints and 8 roadmap milestones have been implemented:
+The product is complete when these outcomes work end to end:
 
-- One opaque still image → three Theme Directions → whole-theme or component-mix selection → validated export → optional apply.
+- One opaque still image → five Theme Directions → whole-theme or component-mix selection → validated export → optional apply.
 - TUI (keyboard-only) and CLI both support complete workflows.
 - Browser preview is optional, local-only, session-token-authenticated.
 - Recipes and archives (finished + reproducible) work.

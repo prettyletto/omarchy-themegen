@@ -2,7 +2,7 @@
 
 Run these before publishing binaries or tags. All checks must pass.
 
-## Automated (AFK)
+## Automated
 
 ```bash
 # Formatting
@@ -14,16 +14,17 @@ go run honnef.co/go/tools/cmd/staticcheck@latest ./...
 
 # Build
 go build ./...
+go build ./cmd/omarchy-themegen
 
 # Tests (does not mutate user config, does not call omarchy theme set)
 go test ./... -count=1
 ```
 
-## Manual (HITL)
+## Manual
 
 ```bash
 # Install
-go install .
+go install ./cmd/omarchy-themegen
 
 # Version check (works without Omarchy or magick)
 omarchy-themegen --version
