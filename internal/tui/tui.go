@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"os/exec"
@@ -57,6 +58,12 @@ type applyDoneMsg struct {
 	err error
 }
 
+type composedPreviewDoneMsg struct {
+	key  string
+	path string
+	err  error
+}
+
 type browserStateMsg struct {
 	state *preview.SelectionState
 }
@@ -105,9 +112,11 @@ type Model struct {
 	termCaps             preview.Capability
 	inlinePreviewEnabled bool
 	previewCache         *preview.Cache
+	previewDir           string
 	directionPreviews    map[int]string
 	composedPreviewPath  string
 	composedPreviewKey   string
+	composedPreviewBusy  bool
 	previewMessage       string
 	browserServer        *preview.BrowserServer
 	browserURL           string
@@ -124,7 +133,15 @@ func Run(imagePath string, archiveMode bool) error {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
-	cache, _ := preview.NewCache(os.TempDir() + "/omarchy-themegen-preview")
+	previewDir, err := os.MkdirTemp("", "omarchy-themegen-preview-*")
+	if err != nil {
+		return fmt.Errorf("create preview cache: %w", err)
+	}
+	cache, err := preview.NewCache(previewDir)
+	if err != nil {
+		_ = os.RemoveAll(previewDir)
+		return err
+	}
 	termCaps := preview.DetectCapability()
 
 	m := &Model{
@@ -137,17 +154,20 @@ func Run(imagePath string, archiveMode bool) error {
 		termCaps:             termCaps,
 		inlinePreviewEnabled: preview.InlineImageSupported(termCaps),
 		previewCache:         cache,
+		previewDir:           previewDir,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	m.program = p
-	_, err := p.Run()
+	_, err = p.Run()
 
 	if m.browserServer != nil {
 		m.browserServer.Stop()
 	}
 	if cache != nil {
 		cache.Cleanup()
+	} else if previewDir != "" {
+		_ = os.RemoveAll(previewDir)
 	}
 
 	return err
@@ -256,6 +276,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.step = stepDone
 		return m, nil
 
+	case composedPreviewDoneMsg:
+		if m.composition == nil {
+			return m, nil
+		}
+		if msg.key != m.compositionPreviewKey() {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.composedPreviewBusy = false
+			m.previewMessage = fmt.Sprintf("Composed preview failed: %v", msg.err)
+			return m, nil
+		}
+		m.composedPreviewBusy = false
+		m.composedPreviewKey = msg.key
+		m.composedPreviewPath = msg.path
+		m.previewMessage = "Composed preview updated"
+		return m, m.drawInlinePreviewCmd()
+
 	case browserStateMsg:
 		return m.applyBrowserState(msg.state)
 	}
@@ -346,6 +384,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inlinePreviewEnabled = !m.inlinePreviewEnabled
 			if m.inlinePreviewEnabled {
 				m.message = "Inline image preview enabled."
+				if m.step == stepGroupSelect || m.step == stepOverrideSelect {
+					return m, m.requestComposedPreviewCmd()
+				}
 				return m, m.drawInlinePreviewCmd()
 			}
 			m.message = "Inline image preview disabled."
@@ -362,7 +403,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			g := theme.AllGroups[m.groupCursor]
 			m.composition.SetGroupSource(g.ID, dirID)
 			m.message = ""
-			return m, m.drawInlinePreviewCmd()
+			return m, m.requestComposedPreviewCmd()
 		}
 		if m.step == stepOverrideSelect {
 			m.ensureComposition("component-mix")
@@ -372,7 +413,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.composition.SetOverride(surf, dirID)
 				m.message = fmt.Sprintf("Override: %s → direction %d", surf, dirID)
 			}
-			return m, m.drawInlinePreviewCmd()
+			return m, m.requestComposedPreviewCmd()
 		}
 
 	case "d":
@@ -384,7 +425,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.composition.ClearOverride(surf)
 				m.message = fmt.Sprintf("Cleared override for %s", surf)
 			}
-			return m, m.drawInlinePreviewCmd()
+			return m, m.requestComposedPreviewCmd()
 		}
 
 	case "a":
@@ -418,7 +459,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.composition.SetGroupSource(g.ID, 1)
 			}
 			m.message = "All groups reset to direction 1"
-			return m, m.drawInlinePreviewCmd()
+			return m, m.requestComposedPreviewCmd()
 		}
 
 	case "w":
@@ -480,7 +521,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 			m.groupCursor = 0
 			m.message = ""
 			m.ensureComposition("component-mix")
-			return m, m.drawInlinePreviewCmd()
+			return m, m.requestComposedPreviewCmd()
 		}
 		m.composition = nil
 		m.step = stepComparison
@@ -710,7 +751,7 @@ func (m Model) currentInlinePreviewPath() string {
 	case stepComparison:
 		return m.selectedDirectionPreviewPath()
 	case stepGroupSelect, stepOverrideSelect:
-		return m.currentComposedPreview()
+		return m.cachedComposedPreviewPath()
 	default:
 		return ""
 	}
@@ -736,7 +777,7 @@ func (m *Model) generateDirectionPreviewFiles() {
 	if m.previewCache == nil || len(m.directions) == 0 {
 		return
 	}
-	previewDir := filepath.Join(os.TempDir(), "omarchy-themegen-preview", "directions")
+	previewDir := filepath.Join(m.previewDir, "directions")
 	paths, err := preview.GenerateDirectionPreviews(previewDir, m.imagePath, m.directions)
 	if err != nil {
 		m.previewMessage = fmt.Sprintf("Preview generation failed: %v", err)
@@ -750,54 +791,91 @@ func (m *Model) generateDirectionPreviewFiles() {
 	m.previewMessage = fmt.Sprintf("Generated %d direction previews", len(paths))
 }
 
-func (m *Model) currentComposedPreview() string {
-	if m.composition == nil || len(m.directions) == 0 || m.imgResult == nil {
+func (m Model) cachedComposedPreviewPath() string {
+	if m.composedPreviewPath == "" || m.composedPreviewKey != m.compositionPreviewKey() {
 		return ""
+	}
+	return m.composedPreviewPath
+}
+
+func (m Model) shouldReserveComposedPreviewRows() bool {
+	return m.composedPreviewBusy || m.cachedComposedPreviewPath() != ""
+}
+
+func (m *Model) requestComposedPreviewCmd() tea.Cmd {
+	if m.composition == nil || len(m.directions) == 0 || m.imgResult == nil {
+		return nil
+	}
+	if !m.allGroupsAssigned() {
+		m.composedPreviewBusy = false
+		m.composedPreviewPath = ""
+		m.composedPreviewKey = ""
+		m.previewMessage = "Assign all surface groups to render the component mix preview."
+		return m.clearInlinePreviewCmd()
 	}
 	key := m.compositionPreviewKey()
 	if m.composedPreviewPath != "" && m.composedPreviewKey == key {
-		return m.composedPreviewPath
+		m.composedPreviewBusy = false
+		return m.drawInlinePreviewCmd()
 	}
-	comp := theme.NewComposition("component-mix")
-	comp.Directions = m.directions
-	defaultDir := 1
-	if m.selected >= 0 && m.selected < len(m.directions) {
-		defaultDir = m.directions[m.selected].ID
+	if m.composedPreviewBusy && m.composedPreviewKey == key {
+		return nil
 	}
-	for _, g := range theme.AllGroups {
-		dirID := m.composition.GroupSources[g.ID]
-		if dirID == 0 {
-			dirID = defaultDir
-		}
-		if err := comp.SetGroupSource(g.ID, dirID); err != nil {
-			return ""
-		}
+	m.composedPreviewBusy = true
+	m.composedPreviewKey = key
+	m.composedPreviewPath = ""
+	m.previewMessage = "Rendering component mix preview..."
+
+	directions := append([]theme.Direction(nil), m.directions...)
+	imagePath := m.imagePath
+	imgResult := m.imgResult
+	basePreviewDir := m.previewDir
+	groups := make(map[string]int, len(m.composition.GroupSources))
+	for gid, did := range m.composition.GroupSources {
+		groups[gid] = did
 	}
-	for surface, dirID := range m.composition.Overrides {
-		if dirID > 0 {
-			if err := comp.SetOverride(surface, dirID); err != nil {
-				return ""
+	overrides := make(map[string]int, len(m.composition.Overrides))
+	for surface, did := range m.composition.Overrides {
+		overrides[surface] = did
+	}
+
+	renderCmd := func() tea.Msg {
+		comp := theme.NewComposition("component-mix")
+		comp.Directions = directions
+		for _, g := range theme.AllGroups {
+			dirID := groups[g.ID]
+			if err := comp.SetGroupSource(g.ID, dirID); err != nil {
+				return composedPreviewDoneMsg{key: key, err: err}
 			}
 		}
+		for surface, dirID := range overrides {
+			if dirID > 0 {
+				if err := comp.SetOverride(surface, dirID); err != nil {
+					return composedPreviewDoneMsg{key: key, err: err}
+				}
+			}
+		}
+		tm, err := comp.Resolve("Preview", imagePath, imgResult)
+		if err != nil {
+			return composedPreviewDoneMsg{key: key, err: err}
+		}
+		previewDir := filepath.Join(basePreviewDir, "composed")
+		if err := os.MkdirAll(previewDir, 0755); err != nil {
+			return composedPreviewDoneMsg{key: key, err: err}
+		}
+		path := filepath.Join(previewDir, key+".png")
+		if err := preview.GenerateComposedPreview(path, imagePath, tm); err != nil {
+			return composedPreviewDoneMsg{key: key, err: err}
+		}
+		return composedPreviewDoneMsg{key: key, path: path}
 	}
-	tm, err := comp.Resolve("Preview", m.imagePath, m.imgResult)
-	if err != nil {
-		return ""
-	}
-	previewDir := filepath.Join(os.TempDir(), "omarchy-themegen-preview", "composed")
-	if err := os.MkdirAll(previewDir, 0755); err != nil {
-		return ""
-	}
-	path := filepath.Join(previewDir, key+".png")
-	if err := preview.GenerateComposedPreview(path, m.imagePath, tm); err != nil {
-		return ""
-	}
-	m.composedPreviewKey = key
-	m.composedPreviewPath = path
-	return path
+	return tea.Batch(m.clearInlinePreviewCmd(), renderCmd)
 }
 
 func (m *Model) compositionPreviewKey() string {
+	if m.composition == nil {
+		return ""
+	}
 	var b strings.Builder
 	b.WriteString(m.composition.Mode)
 	for _, g := range theme.AllGroups {
@@ -806,7 +884,21 @@ func (m *Model) compositionPreviewKey() string {
 	for _, surface := range m.allOverrideSurfaces() {
 		b.WriteString(fmt.Sprintf("|o:%s=%d", surface, m.composition.Overrides[surface]))
 	}
-	return fmt.Sprintf("%x", b.String())
+	sum := sha256.Sum256([]byte(b.String()))
+	return fmt.Sprintf("%x", sum)[:16]
+}
+
+func (m *Model) allGroupsAssigned() bool {
+	if m.composition == nil {
+		return false
+	}
+	for _, g := range theme.AllGroups {
+		dirID, ok := m.composition.GroupSources[g.ID]
+		if !ok || dirID == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *Model) allOverrideSurfaces() []string {
@@ -877,6 +969,7 @@ func (m *Model) applyBrowserState(state *preview.SelectionState) (tea.Model, tea
 				}
 			}
 		}
+		return m, m.requestComposedPreviewCmd()
 	} else if state.Mode == "whole-theme" {
 		m.composition = nil
 		m.mixMode = false

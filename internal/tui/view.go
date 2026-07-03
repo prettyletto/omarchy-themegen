@@ -455,12 +455,22 @@ func (m Model) viewGroupSelect() string {
 	b.WriteString("\n\n")
 
 	if m.inlinePreviewEnabled {
-		path := m.currentComposedPreview()
-		b.WriteString(m.inlinePreviewPlaceholder(path))
+		path := m.cachedComposedPreviewPath()
+		if path != "" {
+			b.WriteString(m.inlinePreviewPlaceholder(path))
+		} else if m.shouldReserveComposedPreviewRows() {
+			b.WriteString(strings.Repeat("\n", inlinePreviewRows))
+		}
+	}
+	if m.previewMessage != "" {
+		b.WriteString(dimStyle.Render(m.previewMessage))
+		b.WriteString("\n")
 	}
 	if m.message != "" {
 		b.WriteString(warnStyle.Render(m.message))
 		b.WriteString("\n\n")
+	} else if m.previewMessage != "" {
+		b.WriteString("\n")
 	}
 	b.WriteString(m.viewDirectionPaletteLegend())
 	if len(m.directions) > 0 {
@@ -515,12 +525,22 @@ func (m Model) viewOverrideSelect() string {
 	b.WriteString(dimStyle.Render("j/k to move • 1/2/3 set • d clear • b browser • i hide/show image • Enter skip • w back"))
 	b.WriteString("\n\n")
 	if m.inlinePreviewEnabled {
-		path := m.currentComposedPreview()
-		b.WriteString(m.inlinePreviewPlaceholder(path))
+		path := m.cachedComposedPreviewPath()
+		if path != "" {
+			b.WriteString(m.inlinePreviewPlaceholder(path))
+		} else if m.shouldReserveComposedPreviewRows() {
+			b.WriteString(strings.Repeat("\n", inlinePreviewRows))
+		}
+	}
+	if m.previewMessage != "" {
+		b.WriteString(dimStyle.Render(m.previewMessage))
+		b.WriteString("\n")
 	}
 	if m.message != "" {
 		b.WriteString(warnStyle.Render(m.message))
 		b.WriteString("\n\n")
+	} else if m.previewMessage != "" {
+		b.WriteString("\n")
 	}
 
 	surfaces := m.allOverrideSurfaces()

@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/prettyletto/omarchy-themegen/internal/export"
+	"github.com/prettyletto/omarchy-themegen/internal/image"
 	"github.com/prettyletto/omarchy-themegen/internal/preview"
 	"github.com/prettyletto/omarchy-themegen/internal/theme"
 	"github.com/prettyletto/omarchy-themegen/internal/validate"
@@ -499,6 +500,71 @@ func TestTUI_ComparisonViewReservesInlinePreviewWithoutEscapes(t *testing.T) {
 	}
 	if got := strings.Count(view, "\n"); got < inlinePreviewRows {
 		t.Fatalf("view should reserve inline preview rows, got only %d newlines", got)
+	}
+}
+
+func TestTUI_CompositionPreviewKeyIsFilesystemSafe(t *testing.T) {
+	m := makeTestModel("/some/image.png")
+	m.step = stepGroupSelect
+	m.selected = 0
+	m.directions = staticTestDirections(5)
+	m.ensureComposition("component-mix")
+	for _, g := range theme.AllGroups {
+		if err := m.composition.SetGroupSource(g.ID, 5); err != nil {
+			t.Fatalf("set group source: %v", err)
+		}
+	}
+	for _, surface := range m.allOverrideSurfaces() {
+		if err := m.composition.SetOverride(surface, 5); err != nil {
+			t.Fatalf("set override: %v", err)
+		}
+	}
+
+	key := m.compositionPreviewKey()
+	if len(key) != 16 {
+		t.Fatalf("expected fixed 16-character key, got %d: %s", len(key), key)
+	}
+	for _, r := range key {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
+			t.Fatalf("key contains non-hex character %q in %s", r, key)
+		}
+	}
+}
+
+func TestTUI_CompositionPreviewRequiresVisibleGroupAssignments(t *testing.T) {
+	m := makeTestModel("/some/image.png")
+	m.step = stepGroupSelect
+	m.selected = 0
+	m.directions = staticTestDirections(5)
+	m.imgResult = &image.Result{Valid: true}
+	m.ensureComposition("component-mix")
+
+	m.requestComposedPreviewCmd()
+	if m.composedPreviewBusy {
+		t.Fatal("preview should not render while groups are visibly unassigned")
+	}
+	if !strings.Contains(m.previewMessage, "Assign all surface groups") {
+		t.Fatalf("expected assignment guidance, got %q", m.previewMessage)
+	}
+}
+
+func TestTUI_CompositionPreviewKeyIgnoresWholeThemeSelection(t *testing.T) {
+	m := makeTestModel("/some/image.png")
+	m.step = stepGroupSelect
+	m.directions = staticTestDirections(5)
+	m.ensureComposition("component-mix")
+	for _, g := range theme.AllGroups {
+		if err := m.composition.SetGroupSource(g.ID, 2); err != nil {
+			t.Fatalf("set group source: %v", err)
+		}
+	}
+
+	m.selected = 0
+	first := m.compositionPreviewKey()
+	m.selected = 4
+	second := m.compositionPreviewKey()
+	if first != second {
+		t.Fatalf("component preview key should follow group assignments, got %s then %s", first, second)
 	}
 }
 
